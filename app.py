@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_security import Security, hash_password, auth_required
-from models import db, user_datastore
+from models import db, user_datastore, KanbanList, KanbanCard
 
 app = Flask(__name__, static_url_path='', static_folder='frontend/dist')
 CORS(app)
@@ -49,7 +49,7 @@ def get_token():
 @app.route('/verify-token', methods=['GET'])
 @auth_required('token', 'basic')
 def verify_token():
-    user = get_user_from_token(request.headers.get('Authentication-Token'))
+    user = get_user_from_token(request.headers.get('AUTHENTICATION-TOKEN'))
     return jsonify({'status': 'success', 'user': user.email})
 
 
@@ -62,6 +62,101 @@ def get_user():
     if current_user is None:
         return jsonify({'status': 'failed'})
     return jsonify({'user': current_user.id})
+
+
+@app.route('/create/list', methods=['POST'])
+@auth_required('token', 'basic')
+def create_list():
+    data = request.get_json()
+    user = get_user_from_request(request)
+
+    #Check if list already exists
+    if KanbanList.query.filter_by(title=data['title'], user_id=user.id).first() is not None:
+        return jsonify({'status': 'failed', 'error': 'List already exists'}), 400
+    
+    list = KanbanList(title=data['title'], user_id=user.id)
+    db.session.add(list)
+    db.session.commit()
+    return jsonify({'status': 'success', 'id': list.id})
+
+@app.route('/create/card', methods=['POST'])
+@auth_required('token', 'basic')
+def create_card():
+    data = request.get_json()
+    user = get_user_from_request(request)
+
+    #Get list_id from list title
+    list_id = KanbanList.query.filter_by(title=data['list'], user_id=user.id).first().id
+    
+    # Check if card already exists
+    if KanbanCard.query.filter_by(title=data['title'], list_id=list_id).first() is not None:
+        return jsonify({'status': 'failed', 'error': 'Card already exists'}), 400
+    
+    card = KanbanCard(title=data['title'], list_id=list_id)
+    db.session.add(card)
+    db.session.commit()
+    return jsonify({'status': 'success', 'id': card.id})
+
+
+@app.route('/delete/list', methods=['POST'])
+@auth_required('token', 'basic')
+def delete_list():
+    data = request.get_json()
+    user = get_user_from_request(request)
+
+    #Check if list exists
+    if KanbanList.query.filter_by(title=data['title'], user_id=user.id).first() is None:
+        return jsonify({'status': 'failed', 'error': 'List does not exist'}), 400
+    
+    list = KanbanList.query.filter_by(title=data['title'], user_id=user.id).first()
+    cards = KanbanCard.query.filter_by(list_id=list.id).all()
+    db.session.delete(list)
+    for card in cards:
+        db.session.delete(card)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+@app.route('/delete/card', methods=['POST'])
+@auth_required('token', 'basic')
+def delete_card():
+    data = request.get_json()
+    user = get_user_from_request(request)
+
+    #Get list_id from list title
+    list_id = KanbanList.query.filter_by(title=data['list'], user_id=user.id).first().id
+    
+    # Check if card exists
+    if KanbanCard.query.filter_by(title=data['title'], list_id=list_id).first() is None:
+        return jsonify({'status': 'failed', 'error': 'Card does not exist'}), 400
+    
+    card = KanbanCard.query.filter_by(title=data['title'], list_id=list_id).first()
+    db.session.delete(card)
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
+
+@app.route('/get/lists', methods=['GET'])
+@auth_required('token', 'basic')
+def get_lists():
+    user = get_user_from_request(request)
+    data = KanbanList.query.filter_by(user_id=user.id).all()
+    lists = []
+    for l in data:
+        lists.append(str(l))
+    return jsonify({'lists': lists})
+
+@app.route('/get/cards', methods=['GET'])
+@auth_required('token', 'basic')
+def get_cards():
+    user = get_user_from_request(request)
+    list_name = request.args.get('list')
+    print(list_name)
+    list_id = KanbanList.query.filter_by(title=list_name, user_id=user.id).first().id
+    data = KanbanCard.query.filter_by(list_id=list_id).all()
+    cards = []
+    for c in data:
+        cards.append(str(c))
+    return jsonify({'cards': cards})
 
 def get_user_from_token(token):
     data = security.remember_token_serializer.loads(token)

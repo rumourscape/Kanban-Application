@@ -43,11 +43,10 @@ export default {
                     // Get auth token from response
                     response.json().then(data => {
                         // Save auth token to local storage
-                        localStorage.setItem("token", data.auth_token);
+                        localStorage.setItem("token", data.response.user.authentication_token);
                         localStorage.setItem("email", this.email);
                         this.$parent.loggedIn = true;
                         this.$parent.email = this.email;
-                        
                         // Redirect to dashboard
                         this.$router.push("/dashboard");
                     });

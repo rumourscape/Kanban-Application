@@ -35,6 +35,9 @@ class KanbanList(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __str__(self):
+        return self.title
     
 
 # Kanban Card Model
@@ -42,3 +45,6 @@ class KanbanCard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
     list_id = db.Column(db.Integer, db.ForeignKey('kanban_list.id'), nullable=False)
+
+    def __str__(self):
+        return self.title
