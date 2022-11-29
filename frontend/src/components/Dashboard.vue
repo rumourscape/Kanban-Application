@@ -56,6 +56,9 @@ export default {
                 })
                 .catch(err => alert(err));
         },
+        updateLists() {
+            this.lists = this.getLists();
+        },
         newList() {
             this.$bvModal.show("list-modal");
         },

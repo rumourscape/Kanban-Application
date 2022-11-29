@@ -97,6 +97,25 @@ def create_card():
     db.session.commit()
     return jsonify({'status': 'success', 'id': card.id})
 
+@app.route('/edit/list', methods=['POST'])
+@auth_required('token', 'basic')
+def edit_list():
+    data = request.get_json()
+    user = get_user_from_request(request)
+
+    #Check if list already exists
+    if KanbanList.query.filter_by(title=data['title'], user_id=user.id).first() is not None:
+        return jsonify({'status': 'failed', 'error': 'List already exists'}), 400
+
+    #Get list_id from list title
+    list_id = KanbanList.query.filter_by(title=data['list'], user_id=user.id).first().id
+
+    #Get list from list_id
+    list = KanbanList.query.filter_by(id=list_id).first()
+    list.title = data['title']
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
 
 @app.route('/delete/list', methods=['POST'])
 @auth_required('token', 'basic')
