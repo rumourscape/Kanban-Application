@@ -7,8 +7,22 @@
         </b-dropdown>
         <hr/>
         <div class="lists">
-            <b-card v-if="!empty" v-for="card in cards" :title="card" class="card" style="background-color: aliceblue;">
-                <b-button variant="danger" size="sm" @click="deleteCard(card)" class="button">Delete</b-button>
+            <b-card v-if="!empty" v-for="card in cards" :title="card.title" class="card" footer-tag="footer">
+                
+                <b-collapse :id="card.title">
+                    <b-card style="background-color: lightpink">
+                        {{card.content}}
+                        <hr />
+                        Deadline: {{card.deadline}}
+                        <hr />
+                        Completed: {{card.completed}}
+                    </b-card>
+                </b-collapse>
+                <template #footer>
+                    <b-button variant="info" v-b-toggle="card.title" size="sm">More</b-button>
+                    <b-button variant="warning" size="sm" @click="" class="button">Edit</b-button>
+                    <b-button variant="danger" size="sm" @click="deleteCard(card)" class="button">Delete</b-button>
+                </template>
             </b-card>
 
             <h3 v-if="empty">No cards</h3>
@@ -19,9 +33,12 @@
 
         <b-modal :id="cardModal" title="Create a new Card" @ok="submitCard" centered static>
             <b-form ref="cardForm" @submit.stop.prevent="submitCard">
-                <b-form-group label="Card Name" label-for="card-name">
-                    <b-form-input id="card-name" v-model="cardName" :state="cardName" required></b-form-input>
-                </b-form-group>
+                <b-form-input id="card-name" v-model="cardName" placeholder="Card Name" required />
+                <hr/>
+                <b-form-input id="card-content" v-model="cardContent" placeholder="Card Content" required />
+                <hr/>
+                <b-form-group label="Deadline"></b-form-group>
+                <b-calendar v-model="cardDate" :min="minDate" required />
             </b-form>
         </b-modal>
 
@@ -48,7 +65,10 @@
                 cardModal: "card-"+this.title,
                 editListModal: "editList-"+this.title,
                 cardName: null,
+                cardContent: null,
+                cardDate: null,
                 listName: null,
+                minDate: new Date(),
             }
         },
         methods: {
@@ -74,8 +94,11 @@
             submitCard() {
                 // Check form is valid
                 if (!this.$refs.cardForm.checkValidity()) {
+                    alert("Please fill all the fields");
                     return;
                 }
+
+                console.log(this.cardDate);
                 
                 // Form is valid, so lets create the list
                 fetch("http://localhost:5000/create/card", {
@@ -87,14 +110,18 @@
                     body: JSON.stringify({
                         list: this.title,
                         title: this.cardName,
+                        content: this.cardContent,
+                        deadline: this.cardDate
                         }),
                     })  .then((res) => res.json())
                         .then((data) => {
                             console.log(data);
                             if(data.status == "success") {
-                                this.cards.push(this.cardName);
+                                this.getCards();
                                 this.empty = false;
                                 this.cardName = null;
+                                this.cardContent = null;
+                                this.cardDate = null;
                                 this.$bvModal.hide(this.cardModal);
                             } else {
                                 alert(data.error);
@@ -163,7 +190,7 @@
                         "Content-Type": "application/json",
                         "AUTHENTICATION-TOKEN": localStorage.getItem("token")
                         },
-                    body: JSON.stringify({ title: card, list: this.title})
+                    body: JSON.stringify({ title: card.title, list: this.title})
                 }).then(res => res.json())
                   .then(data => {
                     console.log(data);
@@ -177,6 +204,9 @@
                         alert(data.message);
                     }
                   })
+            },
+            getId(card) {
+                return card.id
             }
         }
     };
@@ -199,6 +229,7 @@
     }
     .card {
         margin: 10px;
+        background-color: aliceblue;
     }
 
     .button {

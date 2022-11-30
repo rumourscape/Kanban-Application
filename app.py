@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_security import Security, hash_password, auth_required
+from datetime import datetime
 from models import db, user_datastore, KanbanList, KanbanCard
 
 app = Flask(__name__, static_url_path='', static_folder='frontend/dist')
@@ -87,15 +88,21 @@ def create_card():
 
     #Get list_id from list title
     list_id = KanbanList.query.filter_by(title=data['list'], user_id=user.id).first().id
+
+    date = datetime.strptime(data['deadline'], '%Y-%m-%d')
     
     # Check if card already exists
     if KanbanCard.query.filter_by(title=data['title'], list_id=list_id).first() is not None:
         return jsonify({'status': 'failed', 'error': 'Card already exists'}), 400
     
-    card = KanbanCard(title=data['title'], list_id=list_id)
+    card = KanbanCard(title=data['title'], content= data['content'], deadline= date, list_id=list_id)
     db.session.add(card)
-    db.session.commit()
-    return jsonify({'status': 'success', 'id': card.id})
+    
+    try:
+        db.session.commit()
+        return jsonify({'status': 'success', 'id': card.id})
+    except:
+        return jsonify({'status': 'failed', 'error': 'Card could not be created'}), 400
 
 @app.route('/edit/list', methods=['POST'])
 @auth_required('token', 'basic')
@@ -169,12 +176,11 @@ def get_lists():
 def get_cards():
     user = get_user_from_request(request)
     list_name = request.args.get('list')
-    print(list_name)
     list_id = KanbanList.query.filter_by(title=list_name, user_id=user.id).first().id
-    data = KanbanCard.query.filter_by(list_id=list_id).all()
+    data: list[KanbanCard] = KanbanCard.query.filter_by(list_id=list_id).all()
     cards = []
     for c in data:
-        cards.append(str(c))
+        cards.append(c.toJson())
     return jsonify({'cards': cards})
 
 def get_user_from_token(token):

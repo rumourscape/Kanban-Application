@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import UserMixin, RoleMixin
 from flask_security import SQLAlchemyUserDatastore
+import json
 
 db = SQLAlchemy()
 
@@ -44,7 +45,20 @@ class KanbanList(db.Model):
 class KanbanCard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.String(255))
+    deadline = db.Column(db.DateTime)
+    completed = db.Column(db.Boolean, default=False)
     list_id = db.Column(db.Integer, db.ForeignKey('kanban_list.id'), nullable=False)
 
     def __str__(self):
         return self.title
+    
+    def toJson(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'content': self.content,
+            'deadline': self.deadline,
+            'completed': self.completed,
+            'list_id': self.list_id
+        }
