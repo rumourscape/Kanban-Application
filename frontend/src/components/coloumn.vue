@@ -18,9 +18,25 @@
                         Completed: {{card.completed}}
                     </b-card>
                 </b-collapse>
+
+                <b-modal :id="card.title" title="Edit Card" @ok="submitEditedCard(card)" centered static>
+                    <b-form ref="editCardForm" @submit.stop.prevent="submitEditedCard">
+                        <b-form-input id="card-name" v-model="cardName" required />
+                        <hr/>
+                        <b-form-input id="card-content" v-model="cardContent" required />
+                        <hr/>
+                        <b-form-input id="card-list" v-model="cardList" required />
+                        <hr/>
+                        <b-form-checkbox id="card-completed" v-model="cardCompleted" switch> Completed </b-form-checkbox>
+                        <hr/>
+                        <b-form-group label="Deadline"></b-form-group>
+                        <b-calendar v-model="cardDate" :min="minDate" required />
+                    </b-form>
+                </b-modal>
+
                 <template #footer>
-                    <b-button variant="info" v-b-toggle="card.title" size="sm">More</b-button>
-                    <b-button variant="warning" size="sm" @click="" class="button">Edit</b-button>
+                    <b-button variant="info" v-b-toggle="card.title" size="sm" class="button">More</b-button>
+                    <b-button variant="warning" size="sm" @click="showEditCardModal(card)" class="button">Edit</b-button>
                     <b-button variant="danger" size="sm" @click="deleteCard(card)" class="button">Delete</b-button>
                 </template>
             </b-card>
@@ -31,6 +47,7 @@
         <hr/>
         <b-button variant="primary" v-b-modal="cardModal">Add Card</b-button>
 
+        <!-- Modals -->
         <b-modal :id="cardModal" title="Create a new Card" @ok="submitCard" centered static>
             <b-form ref="cardForm" @submit.stop.prevent="submitCard">
                 <b-form-input id="card-name" v-model="cardName" placeholder="Card Name" required />
@@ -49,6 +66,7 @@
                 </b-form-group>
             </b-form>
         </b-modal>
+
     </div>
 </template>
 
@@ -67,6 +85,8 @@
                 cardName: null,
                 cardContent: null,
                 cardDate: null,
+                cardCompleted: false,
+                cardList: null,
                 listName: null,
                 minDate: new Date(),
             }
@@ -162,6 +182,60 @@
                         .catch((err) => {
                             alert(err);
                         });
+            },
+            showEditCardModal(card) {
+                this.cardName = card.title;
+                this.cardContent = card.content;
+                this.cardDate = card.deadline;
+                this.cardCompleted = card.completed;
+                this.cardList = this.title;
+
+                this.$bvModal.show(card.title);
+            },
+            submitEditedCard(card) {
+                // Check form is valid
+                if (!this.$refs.cardForm.checkValidity()) {
+                    return;
+                }
+                console.log(this.cardCompleted);
+
+                fetch("http://localhost:5000/edit/card", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "AUTHENTICATION-TOKEN": localStorage.getItem("token")
+                        },
+                    body: JSON.stringify({
+                        "id": card.id,
+                        "list": this.cardList,
+                        "title": this.cardName,
+                        "content": this.cardContent,
+                        "deadline": this.cardDate,
+                        "completed": this.cardCompleted
+                    })
+                }).then((res) => res.json())
+                  .then((data) => {
+                    console.log(data);
+                    if(data.status == "success") {
+                        if (this.cardList != this.title) {
+                            this.$parent.updateLists();
+                        }
+                        else {
+                            this.getCards();
+                            this.cardName = null;
+                            this.cardContent = null;
+                            this.cardDate = null;
+                            this.cardCompleted = false;
+                            this.cardList = null;
+                            this.$bvModal.hide(this.cardModal);
+                        }
+                    } else {
+                        alert(data.error);
+                    }
+                  })
+                  .catch((err) => {
+                    alert(err);
+                  });
             },
             deleteList() {
                 console.log(this.title);

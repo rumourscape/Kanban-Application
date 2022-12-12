@@ -123,6 +123,39 @@ def edit_list():
     db.session.commit()
     return jsonify({'status': 'success'})
 
+@app.route('/edit/card', methods=['POST'])
+@auth_required('token', 'basic')
+def edit_card():
+    data = request.get_json()
+    user = get_user_from_request(request)
+
+    print(data['completed'])
+
+    card_id = data['id']
+    card: KanbanCard = KanbanCard.query.filter_by(id=card_id).first()
+
+    # Check if card doesn't exists
+    if card is None:
+        return jsonify({'status': 'failed', 'error': "Card does not exists"}), 400
+    
+    og_list = KanbanList.query.filter_by(id=card.list_id).first()
+    if og_list.user_id != user.id:
+        return jsonify({'status': 'failed', 'error': "You do not have permission to edit this card"}), 401 
+
+    list_id = KanbanList.query.filter_by(title=data['list'], user_id=user.id).first().id
+    if list_id is None:
+        return jsonify({'status': 'failed', 'error': "List does not exists"}), 400
+
+    
+    card.title = data['title']
+    card.content = data['content']
+    card.deadline = datetime.strptime(data['deadline'], '%Y-%m-%d')
+    card.list_id = list_id
+    card.completed = data['completed']
+    
+    db.session.commit()
+    return jsonify({'status': 'success'})
+
 
 @app.route('/delete/list', methods=['POST'])
 @auth_required('token', 'basic')
