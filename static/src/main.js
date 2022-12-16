@@ -9,6 +9,7 @@ import App from './App.vue';
 import Home from './components/Home.vue';
 import About from './components/About.vue';
 import Dashboard from './components/Dashboard.vue';
+import Summary from './components/Summary.vue';
 
 Vue.use(VueRouter);
 
@@ -18,7 +19,8 @@ Vue.use(IconsPlugin);
 const routes = [
   { path: '/', component: Home },
   { path: '/about', component: About },
-  { path: '/dashboard', component: Dashboard }
+  { path: '/dashboard', component: Dashboard },
+  { path: '/summary', component: Summary }
 ];
 
 const router = new VueRouter({

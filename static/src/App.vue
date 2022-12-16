@@ -5,9 +5,10 @@
     </div>
       <hr/>
     <div v-if="loggedIn">
-      <h5 class="navleft">Hi {{email}},</h5>
-      <b-button to="/dashboard" style="margin: auto 20px;"> Dashboard </b-button>
-      <b-button to="/about"> About </b-button>
+      <h5 class="navleft">Hi  {{email.split('@')[0]}},</h5>
+      <b-button to="/dashboard" class="navmain"> Dashboard </b-button>
+      <b-button to="/summary" class="navmain"> Summary </b-button>
+      <b-button to="/about" class="navmain"> About </b-button>
       <h5 class="navright"><b-button variant="danger" @click="logout"> Logout </b-button></h5>
       <hr/>
     </div>
@@ -70,6 +71,12 @@ export default {
   vertical-align: middle;
   float: left;
   margin-left: 10%;
+}
+
+.navmain {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: auto 20px;
 }
 
 .navright {

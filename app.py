@@ -1,10 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_security import Security, hash_password, auth_required
 from datetime import datetime
-from models import db, user_datastore, KanbanList, KanbanCard
+import redis
+import ast
 
-app = Flask(__name__, static_url_path='', static_folder='frontend/dist')
+from models import db, user_datastore, KanbanList, KanbanCard
+from util import export_to_csv
+import workers
+
+app = Flask(__name__, static_url_path='', static_folder='static/dist')
 CORS(app)
 
 app.config['DEBUG'] = True
@@ -16,12 +21,23 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mad.db'
 app.config['SECURITY_JOIN_USER_ROLES'] = True
 app.config['SECURITY_REGISTERABLE'] = True
 app.config['SECURITY_PASSWORD_SALT'] = 'super-secret'
+app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/1'
+app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/2'
 
 
 db.init_app(app)
 
 # Token based authentication
 security = Security(app, user_datastore)
+
+rc = redis.Redis(host="localhost", port=6379, db=0)
+
+celery = workers.celery
+celery.conf.broker_url = 'redis://localhost:6379/1'
+celery.conf.result_backend = 'redis://localhost:6379/2'
+celery.Task = workers.ContextTask
+
+app.app_context().push()
 
 # Admin User
 @app.before_first_request
@@ -30,7 +46,6 @@ def create_user():
     if user_datastore.find_user(email='advaitjoglekar@yahoo.in') is None:
         user_datastore.create_user(email='advaitjoglekar@yahoo.in', password= hash_password('password'))
     db.session.commit()
-
 
 @app.route('/')
 def root():
@@ -198,10 +213,19 @@ def delete_card():
 @auth_required('token', 'basic')
 def get_lists():
     user = get_user_from_request(request)
-    data = KanbanList.query.filter_by(user_id=user.id).all()
-    lists = []
-    for l in data:
-        lists.append(str(l))
+
+    lists = rc.get(f'lists{user.id}')
+
+    if lists is None:
+        lists = []
+        data = KanbanList.query.filter_by(user_id=user.id).all()
+        for l in data:
+            lists.append(str(l))
+        
+        rc.set(f'lists{user.id}', str(lists), ex=600)
+    else:
+        lists = ast.literal_eval(lists.decode())
+    
     return jsonify({'lists': lists})
 
 @app.route('/get/cards', methods=['GET'])
@@ -215,6 +239,26 @@ def get_cards():
     for c in data:
         cards.append(c.toJson())
     return jsonify({'cards': cards})
+
+@app.route('/export', methods=['GET'])
+@auth_required('token', 'basic')
+def export():
+    user = get_user_from_request(request)
+    list_name = request.args.get('list')
+    list_id = KanbanList.query.filter_by(title=list_name, user_id=user.id).first().id
+
+    if list_id is None:
+        return jsonify({'status': 'failed', 'error': "List does not exists"}), 400
+    
+    data: list[KanbanCard] = KanbanCard.query.filter_by(list_id=list_id).all()
+
+    for i in range(len(data)):
+        data[i] = data[i].toJson()
+
+    file_name=export_to_csv(data, list_name)
+
+    return send_file(file_name, as_attachment=True)
+
 
 def get_user_from_token(token):
     data = security.remember_token_serializer.loads(token)

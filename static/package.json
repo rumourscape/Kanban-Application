@@ -12,6 +12,7 @@
     "@popperjs/core": "^2.11.6",
     "bootstrap": "^5.2.3",
     "bootstrap-vue": "^2.23.1",
+    "moment": "^2.29.4",
     "portal-vue": "^2.1.7",
     "vue": "^2.7.10",
     "vue-router": "^3.6.5"

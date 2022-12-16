@@ -1,27 +1,30 @@
 <template>
+    <div>
 
-<div>
+        <b-alert :show="export_alert" variant="success" @dismissed="export_alert = false">
+            <h6 class="alert-heading">Export request sent</h6>
+            <h6> A CSV file will download shortly. </h6>
+        </b-alert>
 
-    <div style="max-height: 75vh; display: block; overflow-x: auto;">
-        <div v-for="list in lists" class="dash">
-            <coloumn :title="list"></coloumn>
+        <div style="max-height: 75vh; display: block; overflow-x: auto;">
+            <div v-for="list in lists" class="dash">
+                <coloumn :title="list"></coloumn>
+            </div>
+            <div style="display: inline-block; margin: 80px;">
+                <h3 style="margin-bottom: 30px;"> Make a new List!</h3>
+                <b-button variant="primary" @click="newList">Create List</b-button>
+            </div>
         </div>
-        <div style="display: inline-block; margin: 80px;">
-            <h3 style="margin-bottom: 30px;"> Make a new List!</h3>
-            <b-button variant="primary" @click="newList">Create List</b-button>
-        </div>
+
+        <b-modal id="list-modal" title="Create a new List" @ok="createList" v-b-modal.modal-center>
+            <b-form ref="listForm" @submit.stop.prevent="submitList">
+                <b-form-group label="List Name" label-for="list-name">
+                    <b-form-input id="list-name" v-model="listName" :state="listName" required></b-form-input>
+                </b-form-group>
+            </b-form>
+        </b-modal>
+
     </div>
-
-    <b-modal id="list-modal" title="Create a new List" @ok="createList" v-b-modal.modal-center>
-        <b-form ref="listForm" @submit.stop.prevent="submitList">
-            <b-form-group label="List Name" label-for="list-name">
-                <b-form-input id="list-name" v-model="listName" :state="listName" required></b-form-input>
-            </b-form-group>
-        </b-form>
-    </b-modal>
-
-</div>
-
 </template>
 
 <script>
@@ -32,7 +35,8 @@ export default {
     data() {
         return {
             lists: this.getLists(),
-            listName: null
+            listName: null,
+            export_alert: false,
         }
     },
     components: {
@@ -97,6 +101,9 @@ export default {
                 .catch((err) => {
                   alert(err);
                 });
+        },
+        triggerExportAlert() {
+            this.export_alert = 5;
         }
     }
 };

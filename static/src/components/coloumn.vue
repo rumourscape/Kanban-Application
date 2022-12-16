@@ -2,8 +2,9 @@
 <template>
     <div class="coloumn" style="background-color: honeydew">
         <b-dropdown :text="title" variant="primary" right class="m-md-2">
+            <b-dropdown-item variant="primary" @click="exportList">Export</b-dropdown-item>
             <b-dropdown-item variant="warning" v-b-modal="editListModal" >Edit</b-dropdown-item>
-            <b-dropdown-item variant="danger" @click="deleteList">Delete</b-dropdown-item>
+            <b-dropdown-item variant="danger" @click="deleteList">Delete</b-dropdown-item> 
         </b-dropdown>
         <hr/>
         <div class="lists">
@@ -278,6 +279,20 @@
                         alert(data.message);
                     }
                   })
+            },
+            exportList() {
+                fetch("http://localhost:5000/export?" + new URLSearchParams({'list': this.title}), {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "AUTHENTICATION-TOKEN": localStorage.getItem("token")
+                        }
+                })  .then( res => res.blob() )
+                    .then( blob => {
+                        var file = window.URL.createObjectURL(blob);
+                        window.location.assign(file);
+                    })
+                    .then( this.$parent.triggerExportAlert() )
             },
             getId(card) {
                 return card.id
